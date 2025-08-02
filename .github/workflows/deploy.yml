@@ -18,7 +18,7 @@ on:
 jobs:
   deploy:
     name: Build and deploy ${{ matrix.service }} microservice
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
 
     strategy:
       matrix:
