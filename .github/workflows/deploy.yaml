@@ -41,7 +41,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ matrix.service }} -f ${{ matrix.service }}/Dockerfile .
+          docker build -t ${{ matrix.service }} -f ${{ matrix.service }}/Dockerfile ${{ matrix.service }}
 
       - name: Docker Push
         run: |
