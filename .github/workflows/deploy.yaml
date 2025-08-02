@@ -11,9 +11,9 @@ on:
   pull_request:
     branches:
       - master
-    paths:
-      - '**.js'
-      - '.github/workflows/deploy.yaml'
+    # paths:
+    #   - '**.js'
+    #   - '.github/workflows/deploy.yaml'
 
 jobs:
   deploy:
