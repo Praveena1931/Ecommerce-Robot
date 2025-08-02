@@ -22,7 +22,7 @@ jobs:
 
     strategy:
       matrix:
-        service: [cart, catalogue, dispatch, payment, push, shipping, user]
+        service: [cart, catalogue, dispatch, payment, web, shipping, user]
 
     steps:
       - name: Checkout code
