@@ -30,8 +30,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: NPM install
-        run: npm install
+      # - name: NPM install
+      #   run: npm install
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
