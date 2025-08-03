@@ -8,9 +8,9 @@ on:
       - '**.js'
       - '.github/workflows/deploy.yaml'
 
-  pull_request:
-    branches:
-      - master
+  # pull_request:
+  #   branches:
+  #     - master
     # paths:
     #   - '**.js'
     #   - '.github/workflows/deploy.yaml'
