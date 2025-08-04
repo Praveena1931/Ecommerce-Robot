@@ -104,7 +104,7 @@ jobs:
         
       - name: Install robot-shop Helm chart with Docker image values
         run: |
-           helm upgrade --install ${{ matrix.service }} ./AKS/helm \
+           helm upgrade --install robot-shop ./AKS/helm \
             --namespace robot-shop \
             --set image.repository=${{ secrets.ACR_LOGIN_SERVER }}/${{ matrix.service }} \
             --set image.tag=latest
