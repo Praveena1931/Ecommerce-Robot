@@ -93,7 +93,7 @@ jobs:
       - name: Create ingress-nginx namespace
         run: |
           kubectl create namespace ingress-nginx || echo "Namespace already exists"
-          
+
       - name: Install ingress-nginx
         run: |
           helm install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx || \
@@ -106,7 +106,7 @@ jobs:
         run: |
            helm upgrade --install ${{ matrix.service }} ./AKS/helm \
             --namespace robot-shop \
-            --set image.repository=${{ secrets.ACR_LOGIN_SERVER }}/$SERVICE \
+            --set image.repository=${{ secrets.ACR_LOGIN_SERVER }}/${{ matrix.service }} \
             --set image.tag=latest
 
 
