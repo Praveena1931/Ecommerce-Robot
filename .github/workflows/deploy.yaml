@@ -7,17 +7,9 @@ on:
     paths:
       - '**.js'
       - '.github/workflows/deploy.yaml'
-      
-
-  # pull_request:
-  #   branches:
-  #     - master
-    # paths:
-    #   - '**.js'
-    #   - '.github/workflows/deploy.yaml'
 
 jobs:
-  deploy:
+  build:
     name: Build and deploy ${{ matrix.service }} microservice
     runs-on: ubuntu-latest
 
@@ -31,11 +23,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      # - name: NPM install
-      #   run: npm install
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }} 
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ACR
+        run: |
+          az acr login --name ${{ secrets.ACR_NAME }}
 
       - name: Docker Login (use secrets)
         run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
@@ -44,9 +42,73 @@ jobs:
         run: |
           docker build -t ${{ matrix.service }} -f ${{ matrix.service }}/Dockerfile ${{ matrix.service }}
 
-      - name: Docker Push
+      - name: Tag and Push to ACR
         run: |
-          docker tag ${{ matrix.service }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
+          ACR_LOGIN_SERVER=$(az acr show --name ${{ secrets.ACR_NAME }} --query loginServer --output tsv)
+          docker tag ${{ matrix.service }} ${{ secrets.ACR_LOGIN_SERVER }}/${{ matrix.service }}:latest
+          docker push $ACR_LOGIN_SERVER/${{ matrix.service }}:latest
+
+      # - name: Docker Push
+      #   run: |
+      #     docker tag ${{ matrix.service }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
+      #     docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
+
+  deploy:
+    name: deploy to AKS
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Attach ACR to AKS (if not already attached)
+        run: |
+          echo "🔗 Attaching ACR to AKS..."
+          az aks update \
+          --name ${{ secrets.AKS_CLUSTER_NAME }} \
+          --resource-group ${{ secrets.AKS_RESOURCE_GROUP }} \
+          --attach-acr ${{ secrets.ACR_NAME }} || echo "Already attached or no update needed"
+
+      - name: Get AKS Credentials
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ secrets.AKS_RESOURCE_GROUP }} \
+            --name ${{ secrets.AKS_CLUSTER_NAME }} \
+            --overwrite-existing
+
+      # - name: Show Current Context
+      #   run: kubectl config current-context
+
+      - name: Create robot-shop namespace
+        run: kubectl create ns robot-shop || echo "Namespace exists"
+
+      - name: Add ingress-nginx Helm repo
+        run: helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+
+      - name: Install ingress-nginx
+        run: |
+          helm install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx || \
+          helm upgrade ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx
+
+      - name: Get ingress-nginx service
+        run: kubectl get svc -n ingress-nginx
+        
+      - name: Install robot-shop Helm chart with Docker image values
+        run: |
+           helm upgrade --install ${{ matrix.service }} ./AKS/helm \
+            --namespace robot-shop \
+            --set image.repository=${{ secrets.ACR_LOGIN_SERVER }}/$SERVICE \
+            --set image.tag=latest
 
 
+
+          # helm upgrade --install robot-shop . \
+          #   --namespace robot-shop \
+          #   --set image.repository=docker.io/${{secrets.DOCKERHUB_USERNAME}}/${{matrix.service}} \
+          #   --set image.tag=latest \
+          #   --set image.pullSecrets[0]=regcred
